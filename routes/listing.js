@@ -4,7 +4,7 @@ const Listing = require("../models/listing.js");
 const wrapAsync = require("../utils/wrapAsync.js");
 const ExpressError = require("../utils/ExpressError.js");
 const { listingSchema } = require("../schema.js");
-const { isLoggedIn } = require("../middleware.js");
+const { isLoggedIn, isOwner } = require("../middleware.js");
 
 //middleware function for joi
 const validateListing = (req,res,next) =>{
@@ -30,6 +30,7 @@ router.get("/new", isLoggedIn, (req,res)=>{
 //Create Route: to add the new listing to the DB
 router.post("/", isLoggedIn, validateListing, wrapAsync(async(req,res)=>{
     let newListing = new Listing(req.body.listing);
+    newListing.owner = req.user._id;
     await newListing.save();
     req.flash("success","New Listing Created!");//success partial
     res.redirect("/listings");
@@ -37,40 +38,43 @@ router.post("/", isLoggedIn, validateListing, wrapAsync(async(req,res)=>{
 
 //NOTE: keep this show route after the new route of else the code will mistake new as ':id' as it'll first check for id and then for new
 //Show Route: see individual listing
-router.get("/:id", wrapAsync(async(req,res)=>{
-    let { id } = req.params;
-    const listing = await Listing.findById(id).populate('reviews');
-    if(!listing){
-        req.flash("failure","Requested Listing Doesn't Exist!");//failure partial
-        return res.redirect("/listings");
-    }
-    res.render("listings/show.ejs",{ listing });
-}));
+router.get("/:id", isOwner, (req,res)=>{
+    let listing = req.listing;
+    res.render("listings/show.ejs",{ listing, isOwner: req.isOwner });
+});
 
 //Edit Route: to get the form to create edit listing
-router.get("/:id/edit", isLoggedIn, wrapAsync(async(req,res)=>{
-    let { id } = req.params;
-    let listing = await Listing.findById(id);
-    if(!listing){
-        req.flash("failure","Requested Listing Doesn't Exist!");//failure partial
+router.get("/:id/edit", isLoggedIn, isOwner, (req,res)=>{
+    if(req.isOwner){
+        let listing = req.listing;
+        res.render("listings/edit.ejs", { listing });
+    }else {
+        req.flash("failure","You Are Not Authorized To Edit This Listing!");//failure partial
         return res.redirect("/listings");
     }
-    res.render("listings/edit.ejs", { listing });
-}));
+});
 //Update Route: to add the edited listings to the DB
-router.put("/:id", isLoggedIn, validateListing, wrapAsync(async(req,res)=>{
-    let { id } = req.params;
-    await Listing.findByIdAndUpdate(id, {...req.body.listing});
-    req.flash("success","Listing Updated!");//success partial
-    res.redirect(`/listings/${id}`);
+router.put("/:id", isLoggedIn, isOwner, validateListing, wrapAsync(async(req,res)=>{
+    if(req.isOwner){
+        await Listing.findByIdAndUpdate(req.params.id, {...req.body.listing});
+        req.flash("success","Listing Updated!");//success partial
+        res.redirect(`/listings/${id}`);
+    } else {
+        req.flash("failure","You Are Not Authorized To Edit This Listing!");//failure partial
+        return res.redirect("/listings");
+    }
 }));
 
 //Destroy Route: to delete the listing
-router.delete("/:id", isLoggedIn, wrapAsync(async(req,res)=>{
-    let { id } = req.params;
-    await Listing.findByIdAndDelete(id);
-    req.flash("success","Listing Deleted!");//success partial
-    res.redirect("/listings");
+router.delete("/:id", isLoggedIn, isOwner, wrapAsync(async(req,res)=>{
+    if(req.isOwner){
+        await Listing.findByIdAndDelete(req.params.id);
+        req.flash("success","Listing Deleted!");//success partial
+        res.redirect("/listings");
+    }else {
+        req.flash("failure","You Are Not Authorized To Delete This Listing!");//failure partial
+        return res.redirect("/listings");
+    }
 }));
 
 module.exports = router;
