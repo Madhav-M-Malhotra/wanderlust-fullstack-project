@@ -40,7 +40,7 @@ router.post("/", isLoggedIn, validateListing, wrapAsync(async(req,res)=>{
 //Show Route: see individual listing
 router.get("/:id", isOwner, (req,res)=>{
     let listing = req.listing;
-    res.render("listings/show.ejs",{ listing, isOwner: req.isOwner });
+    res.render("listings/show.ejs",{ listing, isOwner: req.isOwner, currUser: req.user });
 });
 
 //Edit Route: to get the form to create edit listing

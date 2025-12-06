@@ -11,7 +11,7 @@ module.exports.isLoggedIn = (req,res,next) => {
 };
 
 module.exports.isOwner = wrapAsync(async(req,res,next) => {
-    req.listing = await Listing.findById(req.params.id).populate('reviews');
+    req.listing = await Listing.findById(req.params.id).populate({path :'reviews',populate :{path :"author", select :"username"}});
     if(!req.listing){
         req.flash("failure","Requested Listing Doesn't Exist!");//failure partial
         return res.redirect("/listings");

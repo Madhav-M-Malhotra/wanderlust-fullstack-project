@@ -21,6 +21,7 @@ const validateReview = (req,res,next) =>{
 router.post("/", validateReview, wrapAsync(async(req,res)=>{
     let listing = await Listing.findById(req.params.id);
     let newReview = new Review(req.body.review);
+    newReview.author = req.user._id;
 
     listing.reviews.push(newReview);
 
@@ -33,10 +34,15 @@ router.post("/", validateReview, wrapAsync(async(req,res)=>{
 //DELETE Review Route
 router.delete("/:reviewId", wrapAsync(async(req,res)=>{
     let { id, reviewId } = req.params;
-    await Listing.findByIdAndUpdate(id, {$pull: {reviews: reviewId}});//removing the reviewId from the reviews array
-    await Review.findByIdAndDelete(reviewId);
+    let review = await Review.findById(reviewId);
+    if(review.author.equals(req.user._id)){
+        await Listing.findByIdAndUpdate(id, {$pull: {reviews: reviewId}});//removing the reviewId from the reviews array
+        await Review.findByIdAndDelete(reviewId);
 
-    req.flash("success","Review Deleted!");//success partial
+        req.flash("success","Review Deleted!");//success partial
+    } else {
+        req.flash("failure","You Are Not Authorized To Delete This Review!");//failure partial
+    }
     res.redirect(`/listings/${id}`);
 }));
 
