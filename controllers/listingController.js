@@ -1,4 +1,5 @@
 const Listing = require("../models/listing.js");
+const { cloudinary } = require("../cloudinaryConfig.js");
 
 module.exports.allListings = async(req,res)=>{
     const allListings = await Listing.find();
@@ -10,8 +11,15 @@ module.exports.newListing = (req,res)=>{
 }
 
 module.exports.createListing = async(req,res)=>{
+    if(!req.file){
+        throw new ExpressError(400, "image is required");
+    }
     let newListing = new Listing(req.body.listing);
     newListing.owner = req.user._id;
+    newListing.image = {
+        url: req.file.secure_url,
+        public_id: req.file.public_id
+    };
     await newListing.save();
     req.flash("success","New Listing Created!");//success partial
     res.redirect("/listings");
@@ -35,7 +43,18 @@ module.exports.editListing = async(req,res)=>{
 module.exports.updateListing = async(req,res)=>{
     if(req.isOwner){
         const { id } = req.params;
-        await Listing.findByIdAndUpdate(id, {...req.body.listing});
+        const listing = await Listing.findById(id);
+        listing.set({...req.body.listing});
+        if(req.file){
+            if(listing.image.public_id !== "default"){
+                await cloudinary.uploader.destroy(listing.image.public_id);
+            }
+            listing.image = {
+                url: req.file.secure_url,
+                public_id: req.file.public_id
+            };
+        }
+        await listing.save();
         req.flash("success","Listing Updated!");//success partial
         res.redirect(`/listings/${id}`);
     } else {
@@ -46,7 +65,10 @@ module.exports.updateListing = async(req,res)=>{
 
 module.exports.deleteListing = async(req,res)=>{
     if(req.isOwner){
-        await Listing.findByIdAndDelete(req.params.id);
+        const listing = await Listing.findByIdAndDelete(req.params.id);
+        if(listing.image.public_id !== "default"){
+            await cloudinary.uploader.destroy(listing.image.public_id);
+        }
         req.flash("success","Listing Deleted!");//success partial
         res.redirect("/listings");
     }else {
