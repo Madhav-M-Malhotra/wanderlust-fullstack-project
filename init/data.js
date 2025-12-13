@@ -201,7 +201,7 @@ const sampleListings = [
     title: "Eco-Friendly Treehouse Retreat",
     description:
       "Stay in an eco-friendly treehouse nestled in the forest. It's the perfect escape for nature lovers.",
-    image: { url: "https://images.unsplash.com/photo-1488462237308-ecaa28b729d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8c2t5JTIwdmFjYXRpb258ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60", public_id: "default" },
+    image: { url: "https://images.unsplash.com/photo-1599815178934-dabff02bb249?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", public_id: "default" },
     price: 750,
     location: "Costa Rica",
     country: "Costa Rica",
