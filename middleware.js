@@ -2,6 +2,7 @@ const Listing = require("./models/listing.js");
 const wrapAsync = require("./utils/wrapAsync.js");
 const ExpressError = require("./utils/ExpressError.js");
 const { listingSchema, reviewSchema } = require("./schema.js");
+const axios = require("axios");
 
 //middleware functions for joi
 module.exports.validateListing = (req,res,next) =>{
@@ -39,7 +40,7 @@ module.exports.saveRedirectUrl = (req,res,next) => {
     next();
 };
 
-//middleware for Authorization
+//middleware function for Authorization
 module.exports.isOwner = wrapAsync(async(req,res,next) => {
     req.listing = await Listing.findById(req.params.id).populate({path :'reviews',populate :{path :"author", select :"username"}});
     if(!req.listing){
@@ -49,3 +50,23 @@ module.exports.isOwner = wrapAsync(async(req,res,next) => {
     req.isOwner = req.user && req.user._id.equals(req.listing.owner);
     next();
 });
+
+//middleware function for GeoCoding
+module.exports.geoCode = wrapAsync(async(req,res,next)=>{
+    const verifyCountry = await axios.get(`https://nominatim.openstreetmap.org/search?country=${req.body.listing.country}&format=json`);//structured query
+    if(verifyCountry.data.length == 0){
+        throw new ExpressError(400,"Invalid Country Name!");
+    }else{
+        req.body.listing.country = verifyCountry.data[0].name;
+        const verifyLocation = await axios.get(`https://nominatim.openstreetmap.org/search?q=${req.body.listing.location+", "+req.body.listing.country}&format=json`);//free-form query
+        if(verifyLocation.data.length == 0){
+            throw new ExpressError(400,"Invalid Location!");
+        }else{
+            req.body.listing.geometry = {
+                type: "Point",
+                coordinates: [verifyLocation.data[0].lon,verifyLocation.data[0].lat]
+            };//GeoJSON format
+        }
+    }
+    next();
+})
